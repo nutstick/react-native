@@ -19,6 +19,9 @@ const React = require('react');
 const URIActionMap = require('./utils/URIActionMap');
 
 const nativeImageSource = require('../../Libraries/Image/nativeImageSource');
+const LogBox = require('../../Libraries/LogBox/LogBox');
+
+LogBox.ignoreAllLogs();
 
 const {
   AppRegistry,
@@ -168,6 +171,7 @@ const RNTesterExampleListViaHook = ({
 };
 
 class RNTesterApp extends React.Component<Props, RNTesterNavigationState> {
+  state = RNTesterNavigationReducer(null, {type: 'InitialAction'});
   UNSAFE_componentWillMount() {
     BackHandler.addEventListener(
       'hardwareBackPress',
@@ -176,26 +180,26 @@ class RNTesterApp extends React.Component<Props, RNTesterNavigationState> {
   }
 
   componentDidMount() {
-    Linking.getInitialURL().then(url => {
-      AsyncStorage.getItem(APP_STATE_KEY, (err, storedString) => {
-        const exampleAction = URIActionMap(
-          this.props.exampleFromAppetizeParams,
-        );
-        const urlAction = URIActionMap(url);
-        const launchAction = exampleAction || urlAction;
-        if (err || !storedString) {
-          const initialAction = launchAction || {type: 'InitialAction'};
-          this.setState(RNTesterNavigationReducer(null, initialAction));
-          return;
-        }
-        const storedState = JSON.parse(storedString);
-        if (launchAction) {
-          this.setState(RNTesterNavigationReducer(storedState, launchAction));
-          return;
-        }
-        this.setState(storedState);
-      });
-    });
+    // Linking.getInitialURL().then(url => {
+    //   AsyncStorage.getItem(APP_STATE_KEY, (err, storedString) => {
+    //     const exampleAction = URIActionMap(
+    //       this.props.exampleFromAppetizeParams,
+    //     );
+    //     const urlAction = URIActionMap(url);
+    //     const launchAction = exampleAction || urlAction;
+    //     if (err || !storedString) {
+    //       const initialAction = launchAction || {type: 'InitialAction'};
+    //       this.setState(RNTesterNavigationReducer(null, initialAction));
+    //       return;
+    //     }
+    //     const storedState = JSON.parse(storedString);
+    //     if (launchAction) {
+    //       this.setState(RNTesterNavigationReducer(storedState, launchAction));
+    //       return;
+    //     }
+    //     this.setState(storedState);
+    //   });
+    // });
   }
 
   render(): React.Node {

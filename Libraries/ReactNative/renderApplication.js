@@ -47,11 +47,20 @@ function renderApplication<Props: Object>(
     </PerformanceLoggerContext.Provider>
   );
 
+  if (isLogBox) {
+    return;
+  }
+
   GlobalPerformanceLogger.startTimespan('renderApplication_React_render');
   if (fabric) {
     require('../Renderer/shims/ReactFabric').render(renderable, rootTag);
   } else {
-    require('../Renderer/shims/ReactNative').render(renderable, rootTag);
+    require('../Renderer/shims/ReactNative').render(
+      renderable,
+      rootTag,
+      null,
+      !isLogBox,
+    );
   }
   GlobalPerformanceLogger.stopTimespan('renderApplication_React_render');
 }

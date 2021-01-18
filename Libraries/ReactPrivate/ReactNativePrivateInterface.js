@@ -19,6 +19,7 @@ import typeof deepDiffer from '../Utilities/differ/deepDiffer';
 import typeof deepFreezeAndThrowOnMutationInDev from '../Utilities/deepFreezeAndThrowOnMutationInDev';
 import typeof flattenStyle from '../StyleSheet/flattenStyle';
 import typeof ReactFiberErrorDialog from '../Core/ReactFiberErrorDialog';
+import typeof HydrateUIManager from '../ReactNative/HydrateUIManager';
 
 // flowlint unsafe-getters-setters:off
 module.exports = {
@@ -42,6 +43,9 @@ module.exports = {
   },
   get UIManager(): UIManager {
     return require('../ReactNative/UIManager');
+  },
+  get HydrateUIManager(): HydrateUIManager {
+    return require('../ReactNative/HydrateUIManager');
   },
   get deepDiffer(): deepDiffer {
     return require('../Utilities/differ/deepDiffer');

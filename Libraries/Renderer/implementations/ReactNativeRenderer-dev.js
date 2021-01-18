@@ -23,6 +23,8 @@ var ReactNativePrivateInterface = require("react-native/Libraries/ReactPrivate/R
 var Scheduler = require("scheduler");
 var tracing = require("scheduler/tracing");
 
+var log = () => {} // console.log
+
 var ReactSharedInternals =
   React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED; // Prevent newer renderers from RTE when used with older react package versions.
 // Current owner and dispatcher used to share the same ref,
@@ -3954,7 +3956,7 @@ function shim() {
 } // Hydration (when unsupported)
 var isSuspenseInstancePending = shim;
 var isSuspenseInstanceFallback = shim;
-var hydrateTextInstance = shim;
+// var hydrateTextInstance = shim;
 
 var getViewConfigForType =
   ReactNativePrivateInterface.ReactNativeViewConfigRegistry.get;
@@ -3966,7 +3968,7 @@ var UPDATE_SIGNAL = {};
 // % 10 === 1 means it is a rootTag.
 // % 2 === 0 means it is a Fabric tag.
 
-var nextReactTag = 3;
+var nextReactTag = 100003;
 
 function allocateTag() {
   var tag = nextReactTag;
@@ -3992,6 +3994,37 @@ function recursivelyUncacheFiberNode(node) {
 function appendInitialChild(parentInstance, child) {
   parentInstance._children.push(child);
 }
+function createHydrateInstance(
+  tag,
+  type,
+  props,
+  rootContainerInstance,
+  hostContext,
+  internalInstanceHandle
+) {
+  var viewConfig = getViewConfigForType(type);
+
+  {
+    for (var key in viewConfig.validAttributes) {
+      if (props.hasOwnProperty(key)) {
+        ReactNativePrivateInterface.deepFreezeAndThrowOnMutationInDev(
+          props[key]
+        );
+      }
+    }
+  }
+
+  var component = new ReactNativeFiberHostComponent(
+    tag,
+    viewConfig,
+    internalInstanceHandle
+  );
+  // Not sure how to avoid this cast. Flow is okay if the component is defined
+  // in the same file but if it's external it can't see the types.
+
+  return component;
+}
+
 function createInstance(
   type,
   props,
@@ -4019,6 +4052,7 @@ function createInstance(
     rootContainerInstance, // rootTag
     updatePayload // props
   );
+  log('UIManager.createView', tag, viewConfig.uiViewClassName, rootContainerInstance, updatePayload);
   var component = new ReactNativeFiberHostComponent(
     tag,
     viewConfig,
@@ -4029,6 +4063,20 @@ function createInstance(
   // in the same file but if it's external it can't see the types.
 
   return component;
+}
+function createHydrateTextInstance(
+  tag,
+  text,
+  rootContainerInstance,
+  hostContext,
+  internalInstanceHandle
+) {
+  if (tag === 15) {
+    commitTextUpdate()
+    return tag;
+  }
+
+  return tag;
 }
 function createTextInstance(
   text,
@@ -4041,6 +4089,12 @@ function createTextInstance(
   }
 
   var tag = allocateTag();
+
+  if (tag === 15) {
+    commitTextUpdate()
+    return tag;
+  }
+
   ReactNativePrivateInterface.UIManager.createView(
     tag, // reactTag
     "RCTRawText", // viewName
@@ -4049,6 +4103,9 @@ function createTextInstance(
       text: text
     } // props
   );
+  log('UIManager.createView', tag, 'RCTRawText', rootContainerInstance, {
+    text: text
+  });
   precacheFiberNode(internalInstanceHandle, tag);
   return tag;
 }
@@ -4075,6 +4132,7 @@ function finalizeInitialChildren(
     parentInstance._nativeTag, // containerTag
     nativeTags // reactTags
   );
+  log('UIManager.setChildren', parentInstance._nativeTag, JSON.stringify(nativeTags));
   return false;
 }
 function getRootHostContext(rootContainerInstance) {
@@ -4135,6 +4193,7 @@ function shouldSetTextContent(type, props) {
 } // -------------------
 function appendChild(parentInstance, child) {
   var childTag = typeof child === "number" ? child : child._nativeTag;
+  var parentTag = typeof child === "number" ? child : child._nativeTag;
   var children = parentInstance._children;
   var index = children.indexOf(child);
 
@@ -4149,6 +4208,7 @@ function appendChild(parentInstance, child) {
       [], // addAtIndices
       [] // removeAtIndices
     );
+    log('UIManager.manageChildren', parentInstance._nativeTag, [index], [children.length - 1], [], [], []);
   } else {
     children.push(child);
     ReactNativePrivateInterface.UIManager.manageChildren(
@@ -4159,6 +4219,7 @@ function appendChild(parentInstance, child) {
       [children.length - 1], // addAtIndices
       [] // removeAtIndices
     );
+    log('UIManager.manageChildren', parentInstance._nativeTag, [], [], [childTag], [children.length - 1], []);
   }
 }
 function appendChildToContainer(parentInstance, child) {
@@ -4167,6 +4228,7 @@ function appendChildToContainer(parentInstance, child) {
     parentInstance, // containerTag
     [childTag] // reactTags
   );
+  log('UIManager.setChildren', parentInstance, [JSON.stringify(childTag)]);
 }
 function commitTextUpdate(textInstance, oldText, newText) {
   ReactNativePrivateInterface.UIManager.updateView(
@@ -4176,6 +4238,9 @@ function commitTextUpdate(textInstance, oldText, newText) {
       text: newText
     } // props
   );
+  log('UIManager.updateView', textInstance, 'RCTRawText', {
+    text: newText
+  });
 }
 function commitUpdate(
   instance,
@@ -4197,6 +4262,7 @@ function commitUpdate(
       viewConfig.uiViewClassName, // viewName
       updatePayload // props
     );
+    log('UIManager.updateView', instance._nativeTag, viewConfig.uiViewClassName, updatePayload);
   }
 }
 function insertBefore(parentInstance, child, beforeChild) {
@@ -4215,6 +4281,7 @@ function insertBefore(parentInstance, child, beforeChild) {
       [], // addAtIndices
       [] // removeAtIndices
     );
+    log('UIManager.manageChildren', parentInstance._nativeTag, [index], [beforeChildIndex], [], [], []);
   } else {
     var _beforeChildIndex = children.indexOf(beforeChild);
 
@@ -4228,6 +4295,7 @@ function insertBefore(parentInstance, child, beforeChild) {
       [_beforeChildIndex], // addAtIndices
       [] // removeAtIndices
     );
+    log('UIManager.manageChildren', parentInstance._nativeTag, [], [], [childTag], [_beforeChildIndex], []);
   }
 }
 function insertInContainerBefore(parentInstance, child, beforeChild) {
@@ -4252,6 +4320,7 @@ function removeChild(parentInstance, child) {
     [], // addAtIndices
     [index] // removeAtIndices
   );
+  log('UIManager.manageChildren', parentInstance._nativeTag, [], [], [], [], [index]);
 }
 function removeChildFromContainer(parentInstance, child) {
   recursivelyUncacheFiberNode(child);
@@ -4263,6 +4332,7 @@ function removeChildFromContainer(parentInstance, child) {
     [], // addAtIndices
     [0] // removeAtIndices
   );
+  log('UIManager.manageChildren', parentInstance, [], [], [], [], [0]);
 }
 function resetTextContent(instance) {
   // Noop
@@ -4282,6 +4352,7 @@ function hideInstance(instance) {
     viewConfig.uiViewClassName,
     updatePayload
   );
+  log('UIManager.updateView', instance._nativeTag, viewConfig.uiViewClassName, updatePayload);
 }
 function hideTextInstance(textInstance) {
   throw new Error("Not yet implemented.");
@@ -4305,6 +4376,7 @@ function unhideInstance(instance, props) {
     viewConfig.uiViewClassName,
     updatePayload
   );
+  log('UIManager.updateView', instance._nativeTag, viewConfig.uiViewClassName, updatePayload);
 }
 function unhideTextInstance(textInstance, text) {
   throw new Error("Not yet implemented.");
@@ -11817,10 +11889,353 @@ function stopProfilerTimerIfRunningAndRecordDelta(fiber, overrideBaseTime) {
   }
 }
 
+// Supporting hydrate in ReactNative:
+// -------------------
+//     ReactDOMComponent
+// -------------------
+function diffHydratedProperties(
+  instnace/*: Element*/,
+  tag/*: string*/,
+  rawProps/*: Object*/,
+  parentNamespace/*: string*/,
+  rootContainerElement/*: Element | Document*/,
+) {
+  // TODO:
+  return null;
+}
+
+function diffHydratedText(textNode: Text, text: string): boolean {
+  const isDifferent = textNode.nodeValue !== text;
+  return isDifferent;
+}
+
+// -------------------
+//     Hydration
+// -------------------
+
+let supportsHydration = true;
+
+function commitHydratedContainer(container: Container): void {
+  // Retry if any event replaying was blocked on this.
+  // retryIfBlockedOn(container);
+}
+
+function canHydrateInstance(
+  instance,
+  type,
+  props,
+) {
+  if (
+    instance.tag !== HostComponent ||
+    type.toLowerCase() !== instance.viewConfig.uiViewClassName.toLowerCase()
+  ) {
+    return null;
+  }
+  // This has now been refined to an element node.
+  return instance;
+}
+
+function canHydrateTextInstance(
+  instance,
+  text,
+) {
+  if (text === '' || typeof instance !== 'number') {
+    // Empty strings are not parsed by HTML so there won't be a correct match here.
+    return null;
+  }
+  // This has now been refined to a text node.
+  return instance;
+}
+
+function getNextHydratable(node) {
+  // Skip non-hydratable nodes.
+  // Technically all node should be hydratable
+  // for (; node != null; node = ReactNativePrivateInterface.HydrateUIManager.getNextSibling(node)) {
+  //   const nativeTag = node._nativeTag != null
+  //     ? node._nativeTag
+  //     : typeof node === 'number' ? node : null;
+  //   if (nativeTag != null) {
+  //     break;
+  //   }
+  // }
+  return node;
+}
+
+function getNextHydratableSibling(containerInfo) {
+  return getNextHydratable(ReactNativePrivateInterface.HydrateUIManager.getNextSibling(containerInfo));
+}
+
+function getFirstHydratableChild(containerInfo) {
+  return getNextHydratable(ReactNativePrivateInterface.HydrateUIManager.getFirstChild(containerInfo));
+}
+
+function hydrateInstance(
+  instance/*: Instance*/,
+  type/*: string*/,
+  props/*: Props*/,
+  rootContainerInstance/*: Container*/,
+  hostContext/*: HostContext*/,
+  internalInstanceHandle/*: Object*/,
+)/*: null | Array<mixed>*/ {
+  precacheFiberNode(internalInstanceHandle, instance._nativeTag);
+  // TODO: Possibly defer this until the commit phase where all the events
+  // get attached.
+  updateFiberProps(instance._nativeTag, props);
+  let parentNamespace/*: string*/;
+  if (__DEV__) {
+    const hostContextDev = ((hostContext/*: any*/)/*: HostContextDev*/);
+    parentNamespace = hostContextDev.namespace;
+  } else {
+    parentNamespace = ((hostContext/*: any*/)/*: HostContextProd*/);
+  }
+  return diffHydratedProperties(
+    instance,
+    type,
+    props,
+    parentNamespace,
+    rootContainerInstance,
+  );
+}
+
+function hydrateTextInstance(
+  textInstance/*: TextInstance*/,
+  text/*: string*/,
+  internalInstanceHandle/*: Object*/,
+): boolean {
+  precacheFiberNode(internalInstanceHandle, textInstance);
+  return diffHydratedText(textInstance, text);
+}
+
+
+// HACK:
+// The deepest Fiber on the stack involved in a hydration context.
+// This may have been an insertion or a hydration.
+let hydrationParentFiber = null;
+let nextHydratableInstance = null;
+let isHydrating = false;
+
 function enterHydrationState(fiber) {
-  {
+  if (!supportsHydration) {
     return false;
   }
+
+  const parentInstance = fiber.stateNode.containerInfo;
+  nextHydratableInstance = getFirstHydratableChild(parentInstance);
+  hydrationParentFiber = fiber;
+  isHydrating = true;
+  return true;
+}
+
+function createFiberFromHostInstanceForDeletion(): Fiber {
+  const fiber = createFiber(HostComponent, null, null, NoMode);
+  // TODO: These should not need a type.
+  fiber.elementType = 'DELETED';
+  fiber.type = 'DELETED';
+  return fiber;
+}
+
+function deleteHydratableInstance(
+  returnFiber,
+  instance,
+) {
+  // TODO: Just a warning
+  // if (__DEV__) {
+  //   switch (returnFiber.tag) {
+  //     case HostRoot:
+  //       didNotHydrateContainerInstance(
+  //         returnFiber.stateNode.containerInfo,
+  //         instance,
+  //       );
+  //       break;
+  //     case HostComponent:
+  //       didNotHydrateInstance(
+  //         returnFiber.type,
+  //         returnFiber.memoizedProps,
+  //         returnFiber.stateNode,
+  //         instance,
+  //       );
+  //       break;
+  //   }
+  // }
+
+  const childToDelete = createFiberFromHostInstanceForDeletion();
+  childToDelete.stateNode = instance;
+  childToDelete.return = returnFiber;
+  childToDelete.effectTag = Deletion;
+
+  // This might seem like it belongs on progressedFirstDeletion. However,
+  // these children are not part of the reconciliation list of children.
+  // Even if we abort and rereconcile the children, that will try to hydrate
+  // again and the nodes are still in the host tree so these will be
+  // recreated.
+  if (returnFiber.lastEffect !== null) {
+    returnFiber.lastEffect.nextEffect = childToDelete;
+    returnFiber.lastEffect = childToDelete;
+  } else {
+    returnFiber.firstEffect = returnFiber.lastEffect = childToDelete;
+  }
+}
+
+function insertNonHydratedInstance(returnFiber: Fiber, fiber: Fiber) {
+  fiber.effectTag = (fiber.effectTag & ~Hydrating) | Placement;
+  // TODO: Just a warningn
+  // if (__DEV__) {
+  //   switch (returnFiber.tag) {
+  //     case HostRoot: {
+  //       const parentContainer = returnFiber.stateNode.containerInfo;
+  //       switch (fiber.tag) {
+  //         case HostComponent:
+  //           const type = fiber.type;
+  //           const props = fiber.pendingProps;
+  //           didNotFindHydratableContainerInstance(parentContainer, type, props);
+  //           break;
+  //         case HostText:
+  //           const text = fiber.pendingProps;
+  //           didNotFindHydratableContainerTextInstance(parentContainer, text);
+  //           break;
+  //         case SuspenseComponent:
+  //           didNotFindHydratableContainerSuspenseInstance(parentContainer);
+  //           break;
+  //       }
+  //       break;
+  //     }
+  //     case HostComponent: {
+  //       const parentType = returnFiber.type;
+  //       const parentProps = returnFiber.memoizedProps;
+  //       const parentInstance = returnFiber.stateNode;
+  //       switch (fiber.tag) {
+  //         case HostComponent:
+  //           const type = fiber.type;
+  //           const props = fiber.pendingProps;
+  //           didNotFindHydratableInstance(
+  //             parentType,
+  //             parentProps,
+  //             parentInstance,
+  //             type,
+  //             props,
+  //           );
+  //           break;
+  //         case HostText:
+  //           const text = fiber.pendingProps;
+  //           didNotFindHydratableTextInstance(
+  //             parentType,
+  //             parentProps,
+  //             parentInstance,
+  //             text,
+  //           );
+  //           break;
+  //         case SuspenseComponent:
+  //           didNotFindHydratableSuspenseInstance(
+  //             parentType,
+  //             parentProps,
+  //             parentInstance,
+  //           );
+  //           break;
+  //       }
+  //       break;
+  //     }
+  //     default:
+  //       return;
+  //   }
+  // }
+}
+
+function tryHydrate(fiber, nextInstance) {
+  log('tryHydrate', 'with', `[${fiber.tag}]`, fiber.type)
+  switch (fiber.tag) {
+    case HostComponent: {
+      const type = fiber.type;
+      const props = fiber.pendingProps;
+      const instance = canHydrateInstance(nextInstance, type, props);
+      if (instance !== null) {
+        fiber.stateNode = instance;
+        log('tryHydrate', 'HostComponent', fiber.type, fiber.stateNode._nativeTag, true);
+        return true;
+      }
+      return false;
+    }
+    case HostText: {
+      const text = fiber.pendingProps;
+      const textInstance = canHydrateTextInstance(nextInstance, text);
+      if (textInstance !== null) {
+        fiber.stateNode = textInstance;
+        log('tryHydrate', 'HostText', true);
+        return true;
+      }
+      return false;
+    }
+    // case SuspenseComponent: {
+    //   if (enableSuspenseServerRenderer) {
+    //     const suspenseInstance: null | SuspenseInstance = canHydrateSuspenseInstance(
+    //       nextInstance,
+    //     );
+    //     if (suspenseInstance !== null) {
+    //       const suspenseState: SuspenseState = {
+    //         dehydrated: suspenseInstance,
+    //         retryLane: OffscreenLane,
+    //       };
+    //       fiber.memoizedState = suspenseState;
+    //       // Store the dehydrated fragment as a child fiber.
+    //       // This simplifies the code for getHostSibling and deleting nodes,
+    //       // since it doesn't have to consider all Suspense boundaries and
+    //       // check if they're dehydrated ones or not.
+    //       const dehydratedFragment = createFiberFromDehydratedFragment(
+    //         suspenseInstance,
+    //       );
+    //       dehydratedFragment.return = fiber;
+    //       fiber.child = dehydratedFragment;
+    //       return true;
+    //     }
+    //   }
+    //   return false;
+    // }
+    default:
+      return false;
+  }
+}
+
+function tryToClaimNextHydratableInstance(fiber) {
+  log('tryToClaimNextHydratableInstance', fiber.type, nextHydratableInstance && nextHydratableInstance._nativeTag ? nextHydratableInstance._nativeTag : nextHydratableInstance)
+  if (!isHydrating) {
+    return;
+  }
+  let nextInstance = nextHydratableInstance;
+  if (!nextInstance) {
+    log('tryToClaimNextHydratableInstance', 'no next instance')
+    // Nothing to hydrate. Make it an insertion.
+    insertNonHydratedInstance(hydrationParentFiber, fiber);
+    isHydrating = false;
+    hydrationParentFiber = fiber;
+    return;
+  }
+  const firstAttemptedInstance = nextInstance;
+  log('tryToClaimNextHydratableInstance', 'first attempt')
+  if (!tryHydrate(fiber, nextInstance)) {
+    log('tryToClaimNextHydratableInstance', 'second attempt')
+    // If we can't hydrate this instance let's try the next one.
+    // We use this as a heuristic. It's based on intuition and not data so it
+    // might be flawed or unnecessary.
+    nextInstance = getNextHydratableSibling(firstAttemptedInstance);
+    if (!nextInstance || !tryHydrate(fiber, nextInstance)) {
+      log('tryToClaimNextHydratableInstance', 'failed', fiber)
+      // Nothing to hydrate. Make it an insertion.
+      insertNonHydratedInstance(hydrationParentFiber, fiber);
+      isHydrating = false;
+      hydrationParentFiber = fiber;
+      return;
+    }
+    // We matched the next one, we'll now assume that the first one was
+    // superfluous and we'll delete it. Since we can't eagerly delete it
+    // we'll have to schedule a deletion. To do that, this node needs a dummy
+    // fiber associated with it.
+    deleteHydratableInstance(
+      hydrationParentFiber,
+      firstAttemptedInstance,
+    );
+  }
+  log('tryToClaimNextHydratableInstance', 'success')
+  hydrationParentFiber = fiber;
+  nextHydratableInstance = getFirstHydratableChild(nextInstance);
 }
 
 function prepareToHydrateHostInstance(
@@ -11828,30 +12243,146 @@ function prepareToHydrateHostInstance(
   rootContainerInstance,
   hostContext
 ) {
-  {
-    {
-      throw Error(
-        "Expected prepareToHydrateHostInstance() to never be called. This error is likely caused by a bug in React. Please file an issue."
-      );
-    }
+  if (!supportsHydration) {
+    invariant(
+      false,
+      'Expected prepareToHydrateHostInstance() to never be called. ' +
+        'This error is likely caused by a bug in React. Please file an issue.',
+    );
   }
+
+  const instance = fiber.stateNode;
+  const updatePayload = hydrateInstance(
+    instance,
+    fiber.type,
+    fiber.memoizedProps,
+    rootContainerInstance,
+    hostContext,
+    fiber,
+  );
+  // TODO: Type this specific to this type of component.
+  fiber.updateQueue = (updatePayload/*: any*/);
+  // If the update payload indicates that there is a change or if there
+  // is a new ref we mark this as an update.
+  if (updatePayload !== null) {
+    return true;
+  }
+  return false;
 }
 
 function prepareToHydrateHostTextInstance(fiber) {
-  {
-    {
-      throw Error(
-        "Expected prepareToHydrateHostTextInstance() to never be called. This error is likely caused by a bug in React. Please file an issue."
-      );
-    }
+  if (!supportsHydration) {
+    invariant(
+      false,
+      'Expected prepareToHydrateHostTextInstance() to never be called. ' +
+        'This error is likely caused by a bug in React. Please file an issue.',
+    );
   }
-  var shouldUpdate = hydrateTextInstance();
+
+  const textInstance/*: TextInstance*/ = fiber.stateNode;
+  const textContent/*: string*/ = fiber.memoizedProps;
+  const shouldUpdate = hydrateTextInstance(textInstance, textContent, fiber);
+  // TODO: Just a warning
+  // if (__DEV__) {
+  //   if (shouldUpdate) {
+  //     // We assume that prepareToHydrateHostTextInstance is called in a context where the
+  //     // hydration parent is the parent host component of this host text.
+  //     const returnFiber = hydrationParentFiber;
+  //     if (returnFiber !== null) {
+  //       switch (returnFiber.tag) {
+  //         case HostRoot: {
+  //           const parentContainer = returnFiber.stateNode.containerInfo;
+  //           didNotMatchHydratedContainerTextInstance(
+  //             parentContainer,
+  //             textInstance,
+  //             textContent,
+  //           );
+  //           break;
+  //         }
+  //         case HostComponent: {
+  //           const parentType = returnFiber.type;
+  //           const parentProps = returnFiber.memoizedProps;
+  //           const parentInstance = returnFiber.stateNode;
+  //           didNotMatchHydratedTextInstance(
+  //             parentType,
+  //             parentProps,
+  //             parentInstance,
+  //             textInstance,
+  //             textContent,
+  //           );
+  //           break;
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
+  return shouldUpdate;
+}
+
+function popToNextHostParent(fiber/*: Fiber*/)/*: void*/ {
+  let parent = fiber.return;
+  while (
+    parent !== null &&
+    parent.tag !== HostComponent &&
+    parent.tag !== HostRoot &&
+    parent.tag !== SuspenseComponent
+  ) {
+    parent = parent.return;
+  }
+  hydrationParentFiber = parent;
 }
 
 function popHydrationState(fiber) {
-  {
+  if (!supportsHydration) {
     return false;
   }
+  if (fiber !== hydrationParentFiber) {
+    // We're deeper than the current hydration context, inside an inserted
+    // tree.
+    return false;
+  }
+  if (!isHydrating) {
+    // If we're not currently hydrating but we're in a hydration context, then
+    // we were an insertion and now need to pop up reenter hydration of our
+    // siblings.
+    popToNextHostParent(fiber);
+    isHydrating = true;
+    return false;
+  }
+
+  const type = fiber.type;
+
+  // If we have any remaining hydratable nodes, we need to delete them now.
+  // We only do this deeper than head and body since they tend to have random
+  // other nodes in them. We also ignore components with pure text content in
+  // side of them.
+  // TODO: Better heuristic.
+  if (
+    fiber.tag !== HostComponent ||
+    (type !== 'head' &&
+      type !== 'body' &&
+      !shouldSetTextContent(type, fiber.memoizedProps))
+  ) {
+    let nextInstance = nextHydratableInstance;
+    while (nextInstance) {
+      deleteHydratableInstance(fiber, nextInstance);
+      nextInstance = getNextHydratableSibling(nextInstance);
+    }
+  }
+
+  popToNextHostParent(fiber);
+  if (fiber.tag === SuspenseComponent) {
+    // nextHydratableInstance = skipPastDehydratedSuspenseInstance(fiber);
+  } else {
+    nextHydratableInstance = hydrationParentFiber
+      ? getNextHydratableSibling(fiber.stateNode)
+      : null;
+  }
+  return true;
+}
+
+function resetHydrationState() {
+  return;
 }
 
 var ReactCurrentOwner$1 = ReactSharedInternals.ReactCurrentOwner;
@@ -12551,6 +13082,7 @@ function updateHostRoot(current, workInProgress, renderExpirationTime) {
   var nextChildren = nextState.element;
 
   if (nextChildren === prevChildren) {
+    resetHydrationState();
     return bailoutOnAlreadyFinishedWork(
       current,
       workInProgress,
@@ -12560,11 +13092,25 @@ function updateHostRoot(current, workInProgress, renderExpirationTime) {
 
   var root = workInProgress.stateNode;
 
-  if (root.hydrate && enterHydrationState()) {
+  if (root.hydrate && enterHydrationState(workInProgress)) {
     // If we don't have any current children this might be the first pass.
     // We always try to hydrate. If this isn't a hydration pass there won't
     // be any children to hydrate which is effectively the same thing as
     // not hydrating.
+    // if (supportsHydration) {
+    //   const mutableSourceEagerHydrationData =
+    //     root.mutableSourceEagerHydrationData;
+    //   if (mutableSourceEagerHydrationData != null) {
+    //     for (let i = 0; i < mutableSourceEagerHydrationData.length; i += 2) {
+    //       const mutableSource = ((mutableSourceEagerHydrationData[
+    //         i
+    //       ]: any): MutableSource<any>);
+    //       const version = mutableSourceEagerHydrationData[i + 1];
+    //       setWorkInProgressVersion(mutableSource, version);
+    //     }
+    //   }
+    // }
+
     var child = mountChildFibers(
       workInProgress,
       null,
@@ -12593,6 +13139,7 @@ function updateHostRoot(current, workInProgress, renderExpirationTime) {
       nextChildren,
       renderExpirationTime
     );
+    resetHydrationState();
   }
 
   return workInProgress.child;
@@ -12600,6 +13147,10 @@ function updateHostRoot(current, workInProgress, renderExpirationTime) {
 
 function updateHostComponent(current, workInProgress, renderExpirationTime) {
   pushHostContext(workInProgress);
+
+  if (current === null) {
+    tryToClaimNextHydratableInstance(workInProgress);
+  }
 
   var type = workInProgress.type;
   var nextProps = workInProgress.pendingProps;
@@ -12637,6 +13188,10 @@ function updateHostComponent(current, workInProgress, renderExpirationTime) {
 }
 
 function updateHostText(current, workInProgress) {
+  if (current === null) {
+    tryToClaimNextHydratableInstance(workInProgress);
+  }
+
   // immediately after.
 
   return null;
@@ -14284,13 +14839,14 @@ function beginWork(current, workInProgress, renderExpirationTime) {
           ? _unresolvedProps
           : resolveDefaultProps(_Component2, _unresolvedProps);
 
-      return updateClassComponent(
+      const x = updateClassComponent(
         current,
         workInProgress,
         _Component2,
         _resolvedProps,
         renderExpirationTime
       );
+      return x;
     }
 
     case HostRoot:
@@ -14300,7 +14856,7 @@ function beginWork(current, workInProgress, renderExpirationTime) {
       return updateHostComponent(current, workInProgress, renderExpirationTime);
 
     case HostText:
-      return updateHostText();
+      return updateHostText(current, workInProgress);
 
     case SuspenseComponent:
       return updateSuspenseComponent(
@@ -14646,13 +15202,21 @@ function completeWork(current, workInProgress, renderExpirationTime) {
       if (current === null || current.child === null) {
         // If we hydrated, pop so that we can delete any remaining children
         // that weren't hydrated.
-        var wasHydrated = popHydrationState();
+        var wasHydrated = popHydrationState(workInProgress);
+
 
         if (wasHydrated) {
           // If we hydrated, then we'll need to schedule an update for
           // the commit side-effects on the root.
           markUpdate(workInProgress);
         }
+        // else if (!fiberRoot.hydrate) {
+        //   // Schedule an effect to clear this container at the start of the next commit.
+        //   // This handles the case of React rendering into a container with previous children.
+        //   // It's also safe to do for updates too, because current.child would only be null
+        //   // if the previous render was null (so the the container would already be empty).
+        //   workInProgress.effectTag |= Snapshot;
+        // }
       }
 
       updateHostContainer(workInProgress);
@@ -14692,12 +15256,19 @@ function completeWork(current, workInProgress, renderExpirationTime) {
         // or completeWork depending on whether we want to add them top->down or
         // bottom->up. Top->down is faster in IE11.
 
-        var _wasHydrated = popHydrationState();
+        var _wasHydrated = popHydrationState(workInProgress);
+
 
         if (_wasHydrated) {
           // TODO: Move this and createInstance step into the beginPhase
           // to consolidate.
-          if (prepareToHydrateHostInstance()) {
+          if (
+            prepareToHydrateHostInstance(
+              workInProgress,
+              rootContainerInstance,
+              currentHostContext
+            )
+          ) {
             // If changes to the hydrated node need to be applied at the
             // commit-phase we mark this as such.
             markUpdate(workInProgress);
@@ -14751,10 +15322,10 @@ function completeWork(current, workInProgress, renderExpirationTime) {
 
         var _currentHostContext = getHostContext();
 
-        var _wasHydrated2 = popHydrationState();
+        var _wasHydrated2 = popHydrationState(workInProgress);
 
         if (_wasHydrated2) {
-          if (prepareToHydrateHostTextInstance()) {
+          if (prepareToHydrateHostTextInstance(workInProgress)) {
             markUpdate(workInProgress);
           }
         } else {
@@ -16495,6 +17066,14 @@ function commitWork(current, finishedWork) {
     }
 
     case HostRoot: {
+      if (supportsHydration) {
+        const root/*: FiberRoot*/ = finishedWork.stateNode;
+        if (root.hydrate) {
+          // We've just hydrated. No need to hydrate again.
+          root.hydrate = false;
+          commitHydratedContainer(root.containerInfo);
+        }
+      }
       return;
     }
 
@@ -17115,7 +17694,7 @@ function scheduleUpdateOnFiber(fiber, expirationTime) {
     } else {
       ensureRootIsScheduled(root);
       schedulePendingInteractions(root, expirationTime);
-
+      
       if (executionContext === NoContext) {
         // Flush the synchronous work now, unless we're already working or inside
         // a batch. This is intentionally inside scheduleUpdateOnFiber instead of
@@ -21055,14 +21634,17 @@ function dispatchCommand(handle, command, args) {
   }
 }
 
-function render(element, containerTag, callback) {
+function render(element, containerTag, callback, hydrate) {
   var root = roots.get(containerTag);
 
   if (!root) {
     // TODO (bvaughn): If we decide to keep the wrapper component,
     // We could create a wrapper for containerTag as well to reduce special casing.
-    root = createContainer(containerTag, LegacyRoot, false);
+    root = createContainer(containerTag, LegacyRoot, hydrate);
     roots.set(containerTag, root);
+    if (hydrate) {
+      ReactNativePrivateInterface.HydrateUIManager.setup(createHydrateInstance, createHydrateTextInstance, root, null, null);
+    }
   }
 
   updateContainer(element, root, null, callback);
@@ -21084,6 +21666,7 @@ function unmountComponentAtNodeAndRemoveContainer(containerTag) {
   unmountComponentAtNode(containerTag); // Call back into native to remove all of the subviews from this container
 
   ReactNativePrivateInterface.UIManager.removeRootView(containerTag);
+  log('UIManager.removeRootView', containerTag);
 }
 
 function createPortal$1(children, containerTag) {

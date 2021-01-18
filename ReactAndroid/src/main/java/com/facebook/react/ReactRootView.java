@@ -55,6 +55,17 @@ import com.facebook.react.uimanager.common.UIManagerType;
 import com.facebook.react.uimanager.events.EventDispatcher;
 import com.facebook.systrace.Systrace;
 
+import android.graphics.Color;
+import com.facebook.react.bridge.JavaOnlyArray;
+import com.facebook.react.bridge.JavaOnlyMap;
+import com.facebook.react.views.text.ReactRawTextManager;
+import com.facebook.react.views.text.ReactRawTextShadowNode;
+import com.facebook.react.views.text.ReactTextViewManager;
+import com.facebook.react.views.view.ReactViewManager;
+import com.facebook.react.views.image.ReactImageManager;
+import com.facebook.react.views.drawer.ReactDrawerLayoutManager;
+import com.facebook.react.common.ReactConstants;
+
 /**
  * Default root view for catalyst apps. Provides the ability to listen for size changes so that a UI
  * manager can re-layout its elements. It delegates handling touch events for itself and child views
@@ -546,6 +557,150 @@ public class ReactRootView extends FrameLayout implements RootView, ReactRoot {
 
         // TODO T62192299: remove this
         FLog.e(TAG, "runApplication: call AppRegistry.runApplication");
+
+        int tag = getRootViewTag();
+        reactContext.runOnNativeModulesQueueThread(
+          new Runnable() {
+            @Override
+            public void run() {
+              @Nullable
+              UIManagerModule uiManager =
+                reactContext.getNativeModule(UIManagerModule.class);
+              if (uiManager != null && !"LogBox".equals(getJSModuleName())) {
+                FLog.v(ReactConstants.TAG, "Start createViews " + getJSModuleName());
+                uiManager.createView(
+                  3,
+                  ReactViewManager.REACT_CLASS,
+                  tag,
+                  JavaOnlyMap.of(
+                    "collapsable", true, "flex", 1, "pointerEvents", "box-none"));
+                uiManager.createView(
+                  5,
+                  ReactViewManager.REACT_CLASS,
+                  tag,
+                  JavaOnlyMap.of(
+                    "flex", 1, "pointerEvents", "box-none"));
+                uiManager.setChildren(5, JavaOnlyArray.of(3));
+                uiManager.setChildren(tag, JavaOnlyArray.of(5));
+                uiManager.createView(
+                  7,
+                  ReactViewManager.REACT_CLASS,
+                  tag,
+                  JavaOnlyMap.of(
+                    "height", 28,
+                    "backgroundColor", -10969968));
+                uiManager.createView(
+                  9,
+                  ReactRawTextManager.REACT_CLASS,
+                  tag,
+                  JavaOnlyMap.of(ReactRawTextShadowNode.PROP_TEXT, "I'm from Naitve"));
+                uiManager.createView(
+                  13,
+                  ReactTextViewManager.REACT_CLASS,
+                  tag,
+                  JavaOnlyMap.of(
+                    "fontSize", 19,
+                    "fontWeight", "600",
+                    "textAlign", "center",
+                    "allowFontScaling", true,
+                    "color", -1,
+                    "accessible", true,
+                    "ellipsizeMode", "tail"));
+                uiManager.setChildren(13, JavaOnlyArray.of(9));
+                uiManager.createView(
+                  15,
+                  ReactViewManager.REACT_CLASS,
+                  tag,
+                  JavaOnlyMap.of(
+                    "flex", 1,
+                    "position", "absolute",
+                    "top", 12,
+                    "right", 0,
+                    "alignItems", "center",
+                    "left", 0));
+                uiManager.setChildren(15, JavaOnlyArray.of(13));
+                uiManager.createView(
+                  17,
+                  ReactImageManager.REACT_CLASS,
+                  tag,
+                  JavaOnlyMap.of(
+                    "width", 48,
+                    "src", JavaOnlyArray.of(JavaOnlyMap.of("uri", "ic_menu_black_24dp")),
+                    "loadingIndicatorSrc", null,
+                    "overflow", "hidden",
+                    "shouldNotifyLoadEvents", false,
+                    "height", 48,
+                    "defaultSrc", null));
+                uiManager.createView(
+                  19,
+                  ReactViewManager.REACT_CLASS,
+                  tag,
+                  JavaOnlyMap.of("marginTop", 2));
+                uiManager.setChildren(19, JavaOnlyArray.of(17));
+                uiManager.createView(
+                  23,
+                  ReactViewManager.REACT_CLASS,
+                  tag,
+                  // JavaOnlyMap.of("height", 56, "backgroundColor", -12829629));
+                  JavaOnlyMap.of("height", 56, "backgroundColor", Color.GREEN));
+                uiManager.setChildren(23, JavaOnlyArray.of(15, 19));
+                uiManager.createView(
+                  25,
+                  ReactViewManager.REACT_CLASS,
+                  tag,
+                  JavaOnlyMap.of("flex", 1));
+                uiManager.setChildren(25, JavaOnlyArray.of(23));
+                uiManager.createView(
+                  27,
+                  ReactViewManager.REACT_CLASS,
+                  tag,
+                  JavaOnlyMap.of(
+                    "position", "absolute",
+                    "top", 0,
+                    "right", 0,
+                    "left", 0,
+                    "bottom", 0,
+                    "collapsable",false));
+                uiManager.setChildren(27, JavaOnlyArray.of(7, 25));
+                uiManager.createView(
+                  29,
+                  ReactViewManager.REACT_CLASS,
+                  tag,
+                  JavaOnlyMap.of(
+                    "position", "absolute",
+                    "top", 0,
+                    "right", 0,
+                    "left", 0,
+                    "backgroundColor", 1073741824,
+                    "height", 28));
+                uiManager.createView(
+                  33,
+                  ReactViewManager.REACT_CLASS,
+                  tag,
+                  JavaOnlyMap.of(
+                    "position", "absolute",
+                    "top", 0,
+                    "bottom", 0,
+                    "backgroundColor", -1,
+                    "width", 355.42857142857144,
+                    "collapsable", false));
+                uiManager.setChildren(33, JavaOnlyArray.of(29));
+                uiManager.createView(
+                  35,
+                  ReactDrawerLayoutManager.REACT_CLASS,
+                  tag,
+                  JavaOnlyMap.of(
+                    "drawerPosition", "left",
+                    "drawerWidth", 355.42857142857144,
+                    "flex", 1,
+                    "elevation", 16));
+                uiManager.setChildren(35, JavaOnlyArray.of(27, 33));
+                uiManager.manageChildren(3, JavaOnlyArray.of(), JavaOnlyArray.of(), JavaOnlyArray.of(35), JavaOnlyArray.of(0), JavaOnlyArray.of());
+              }
+            }
+          }
+        );
+          
         catalystInstance.getJSModule(AppRegistry.class).runApplication(jsAppModuleName, appParams);
       }
     } finally {
